@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Loom Studio</title><link rel="stylesheet" href="/styles.css"></head>
+<body>
+<header><div><strong>Loom Studio</strong><span id="project-name"></span></div><div class="actions"><button id="open-project">Open folder</button><button id="bookmark">Bookmark</button><button id="new-timeline">New timeline</button><select id="timeline"></select></div></header>
+<main>
+  <aside id="categories"><h2>References</h2><nav id="category-list"></nav></aside>
+  <section id="reference"><div class="pane-title"><span id="reference-title">Reference</span><button id="toggle-reference">Edit</button></div><div id="reference-tabs"></div><textarea id="reference-editor" readonly></textarea></section>
+  <section id="manuscript"><div class="pane-title"><button id="previous">←</button><span id="manuscript-title">Manuscript</span><button id="next">→</button></div><textarea id="manuscript-editor"></textarea><div class="status"><span id="save-state">Saved</span><span id="warnings"></span></div></section>
+  <aside id="toc"><h2>Story</h2><nav id="toc-list"></nav></aside>
+</main>
+<dialog id="prompt-dialog"><form method="dialog"><label id="prompt-label"></label><input id="prompt-input" required><menu><button value="cancel">Cancel</button><button id="prompt-confirm" value="default">Confirm</button></menu></form></dialog>
+<script type="module" src="/app.js"></script>
+</body></html>
