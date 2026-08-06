@@ -22,10 +22,10 @@ Legend: ✅ pass · ❌ fail
 
 | Check | Result |
 |-------|--------|
-| Build (`tsc`) | ❌ **FAIL** — 14 errors |
+| Build (`tsc`) | ❌ **FAIL** — 13 errors |
 | Tests (`node --test`) | ✅ **PASS** — 10/10 |
 
-### Build errors (14)
+### Build errors (13)
 
 `src/documents.ts` — 13 errors. Property accesses on a value typed as
 `{} | { [key: string]: any }` (frontmatter/`data` whose type isn't narrowed),
@@ -56,5 +56,37 @@ so TypeScript rejects each property read:
 
 All 10 tests pass (lifecycle, bookmarks, alternate timelines, timeline-name
 normalization, archive, migration, diagnostics). No failures.
+
+---
+
+## 2026-08-06T18:31:42Z — commits `902aa85`, `0baf389`, `5a01e2e`, `91ab2dc`
+
+Caught up on 4 commits pushed after the baseline (webhook delivery was down, so
+these were picked up on a manual re-check). Each was built + tested individually.
+
+| Commit | Subject | Build | Tests |
+|--------|---------|-------|-------|
+| `902aa85` | feat(archive): expose trash inventory | ❌ 13 errors | ✅ 10/10 |
+| `0baf389` | fix(build): narrow parsed frontmatter before property access | ❌ 1 error | ✅ 10/10 |
+| `5a01e2e` | fix(build): use chokidar FSWatcher type export | ✅ **0 errors** | ✅ 10/10 |
+| `91ab2dc` | feat(manuscript): persist drag-to-reorder order metadata | ❌ 2 errors | ✅ 10/10 |
+
+**Progression:** the two `fix(build)` commits cleared the whole backlog — build
+was **fully green at `5a01e2e`** (`0baf389` fixed the 12 `documents.ts`
+frontmatter errors; `5a01e2e` fixed the `chokidar` namespace error). The latest
+commit `91ab2dc` then **reintroduced 2 build errors** — a regression.
+
+### `91ab2dc` — build errors (2) ⚠️ regression vs green `5a01e2e`
+
+New drag-to-reorder code reads properties off a value narrowed to `{ order: number }`,
+so `chapter` and `scene_number` are rejected:
+
+| Location | Error | Property |
+|----------|-------|----------|
+| `documents.ts:104:28` | TS2339 | `chapter` |
+| `documents.ts:105:28` | TS2339 | `scene_number` |
+
+### Test results
+All 10 tests pass on every one of the 4 commits. No test failures introduced.
 
 ---
