@@ -15,18 +15,58 @@ Loom Studio keeps manuscripts and story state in readable files, provides author
 
 ## Repository boundary
 
-Real writing projects do not belong in this repository. Local projects may be placed under `local-projects/` for development, but that directory is ignored by Git. Production projects may live anywhere on disk and are opened by path.
+Real writing projects do not belong in this repository. Local projects may be placed under `local-projects/` for development, but that directory is ignored by Git. Production projects may live anywhere on disk and are opened by absolute path.
 
-## Initial milestone
+The committed `fixtures/sample-project` is synthetic and exists only for tests and the first-run demo.
 
-**Milestone 0: A Good Writing App**
+## Run it
 
-1. Open a Loom project.
-2. Discover and index manuscript and reference documents.
-3. Edit Markdown while preserving frontmatter.
-4. Watch the filesystem and reflect external changes.
-5. Initialize and use Git through author-facing concepts.
-6. Create bookmarks and alternate timelines.
-7. Keep a project graph synchronized with canonical files.
+Requirements: Node.js 20+ and Git.
 
-See [`docs/architecture.md`](docs/architecture.md) for the system boundaries.
+```bash
+npm install
+npm start
+```
+
+Open `http://localhost:4173`. Studio starts with the synthetic fixture. To start with another project:
+
+```bash
+LOOM_PROJECT="/absolute/path/to/project" npm start
+```
+
+The folder must contain a valid `loom.json`. See [`docs/project-format.md`](docs/project-format.md).
+
+For development:
+
+```bash
+npm run dev
+npm run check
+```
+
+## Milestone 0: A Good Writing App
+
+The first vertical slice implements:
+
+1. Opening any valid Loom project by path.
+2. Discovering and ordering manuscript and reference documents.
+3. Editing manuscript Markdown with preserved YAML frontmatter.
+4. Read-first reference panes with explicit edit/save mode.
+5. Debounced filesystem watching and browser live reload.
+6. A derived project graph rebuilt from canonical files.
+7. Git initialization behind author-facing controls.
+8. Named bookmark save points.
+9. Creation and switching of alternate timelines.
+10. A synthetic fixture and automated tests covering document, graph, and revision behavior.
+
+## Current interface
+
+```text
+category rail | persistent reference pane | manuscript centerpiece | story contents
+```
+
+The current UI is intentionally dependency-light. It proves the authoring, file, graph, and revision spine before richer editors, adapter activity, engine-pack management, tracked revisions, or Loom View are layered on.
+
+## Documentation
+
+- [`docs/architecture.md`](docs/architecture.md)
+- [`docs/project-format.md`](docs/project-format.md)
