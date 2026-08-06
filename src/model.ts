@@ -65,6 +65,15 @@ export interface ProjectDiagnostic {
   documentId?: string;
 }
 
+export type ProjectLinkType =
+  | "features"
+  | "pov"
+  | "located-at"
+  | "references"
+  | "relationship"
+  | "relationship-from"
+  | "relationship-to";
+
 export interface ProjectGraph {
   documents: LoomDocument[];
   manuscripts: LoomDocument[];
@@ -72,7 +81,7 @@ export interface ProjectGraph {
   characters: Array<{ id: string; name: string; path: string }>;
   locations: Array<{ id: string; name: string; path: string }>;
   tags: Array<{ name: string; documentIds: string[] }>;
-  links: Array<{ from: string; to: string; type: "features" | "pov" | "located-at" | "references" | "relationship" }>;
+  links: Array<{ from: string; to: string; type: ProjectLinkType }>;
   diagnostics: ProjectDiagnostic[];
   generatedAt: string;
 }
