@@ -1,0 +1,36 @@
+{
+  "$schema": "./validation-manifest.schema.json",
+  "milestone": "2",
+  "name": "Engine Packs and Assistant Observation",
+  "branch": "milestone-2",
+  "status": "in-progress",
+  "purpose": "Validate provider-neutral runtime compilation, external assistant observation, sessions, and proposed-write review without turning Studio into an AI client.",
+  "product_language": {
+    "boundary": "Prompting belongs to the assistant. Project stewardship belongs to Loom Studio.",
+    "prohibited": ["embedded provider chat requirement", "provider credential custody", "subscription impersonation", "mandatory cloud service"]
+  },
+  "commands": {
+    "install": "npm install",
+    "static": "npm run check",
+    "start": "npm start",
+    "fixture": "LOOM_PROJECT=\"$PWD/fixtures/sample-project\" npm start"
+  },
+  "acceptance": [
+    {"id":"M2-BOUNDARY-001","area":"product-boundary","requirement":"Studio requires no provider login, API key, or embedded prompting surface to use assistant observation.","method":"Configuration and UI audit.","automated":true,"status":"pending"},
+    {"id":"M2-ENGINE-001","area":"engine-packs","requirement":"Versioned engine-pack contract supports detect, install, inspect, compile, upgrade, and remove operations.","method":"Contract tests with synthetic packs.","automated":true,"status":"pending"},
+    {"id":"M2-ENGINE-002","area":"engine-packs","requirement":"Generic filesystem pack installs assistant-neutral instructions and runtime configuration without changing author documents.","method":"Install into temporary fixture and compare canonical document hashes.","automated":true,"status":"pending"},
+    {"id":"M2-ENGINE-003","area":"engine-packs","requirement":"Claude Code pack installs conventions and optional hooks without requiring Anthropic API credentials.","method":"Fixture install and source audit.","automated":true,"status":"pending"},
+    {"id":"M2-RUNTIME-001","area":"runtime-compiler","requirement":"Compile project graph into deterministic guide, cast, manuscript, and project runtime capsules under .loom/runtime.","method":"Golden-file and repeatability tests.","automated":true,"status":"pending"},
+    {"id":"M2-RUNTIME-002","area":"runtime-compiler","requirement":"Generated runtime files are replaceable artifacts and never become canonical project truth.","method":"Delete and regenerate runtime directory; verify canonical files unchanged.","automated":true,"status":"pending"},
+    {"id":"M2-ADAPTER-001","area":"adapters","requirement":"Capability-based adapter contract normalizes sessions, activity, proposals, and connection state.","method":"Contract tests using generic adapter.","automated":true,"status":"pending"},
+    {"id":"M2-ADAPTER-002","area":"adapters","requirement":"Generic filesystem adapter observes external JSONL session events without controlling the prompting process.","method":"Write fixture events externally and verify normalized activity feed.","automated":true,"status":"pending"},
+    {"id":"M2-SESSION-001","area":"sessions","requirement":"Session metadata and activity history persist under .loom/sessions and reopen after Studio restart.","method":"Automated persistence test and manual restart flow.","automated":true,"status":"pending"},
+    {"id":"M2-ACTIVITY-001","area":"activity","requirement":"Studio shows live normalized status, reads, writes, tasks, waits, completions, and errors when supplied by an adapter.","method":"Synthetic event stream and manual UI review.","automated":true,"status":"pending"},
+    {"id":"M2-PROPOSAL-001","area":"proposed-writes","requirement":"External tools can create proposal bundles under .loom/proposals without touching canonical files.","method":"Fixture proposal ingestion test.","automated":true,"status":"pending"},
+    {"id":"M2-PROPOSAL-002","area":"proposed-writes","requirement":"Author can preview, accept, reject, or edit a proposal; acceptance uses safe writes and may create a bookmark.","method":"Automated proposal lifecycle plus manual review UI.","automated":true,"status":"pending"},
+    {"id":"M2-PROPOSAL-003","area":"proposed-writes","requirement":"Stale proposals detect changed base documents and require explicit conflict handling.","method":"Change canonical file after proposal creation and validate stale status.","automated":true,"status":"pending"},
+    {"id":"M2-UI-001","area":"assistant-desk","requirement":"Assistant activity is a secondary, collapsible desk within the writer-first binder rather than the main application surface.","method":"Desktop and narrow-width visual review.","automated":false,"status":"pending"},
+    {"id":"M2-COMPAT-001","area":"regression","requirement":"All Milestone 1 authoring, archive, timeline, graph, and project lifecycle tests remain green.","method":"Full existing test suite.","automated":true,"status":"pending"}
+  ],
+  "signoff": {"validated_by":null,"validated_at":null,"commit":null,"notes":[]}
+}
