@@ -1,7 +1,7 @@
 import path from "node:path";
 import http from "node:http";
 import express from "express";
-import chokidar from "chokidar";
+import chokidar, { type FSWatcher } from "chokidar";
 import { WebSocketServer } from "ws";
 import { indexProject } from "./project.js";
 import { createDocument, duplicateDocument, renameDocument, writeDocument } from "./documents.js";
@@ -15,7 +15,7 @@ const server = http.createServer(app);
 const sockets = new WebSocketServer({ server, path: "/events" });
 const port = Number(process.env.PORT ?? 4173);
 let projectRoot = process.env.LOOM_PROJECT ? path.resolve(process.env.LOOM_PROJECT) : path.resolve("fixtures/sample-project");
-let watcher: chokidar.FSWatcher | null = null;
+let watcher: FSWatcher | null = null;
 let refreshTimer: NodeJS.Timeout | null = null;
 
 app.use(express.json({ limit: "4mb" }));
