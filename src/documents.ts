@@ -24,33 +24,37 @@ export async function readDocument(root: string, relativePath: string, kind: Doc
   const absolute = safePath(root, relativePath);
   const [raw, stat] = await Promise.all([fs.readFile(absolute, "utf8"), fs.stat(absolute)]);
   const warnings: string[] = [];
-  let parsed;
-  try { parsed = matter(raw); } catch (error) {
-    parsed = { data: {}, content: raw };
+  let data: Record<string, unknown> = {};
+  let content = raw;
+  try {
+    const parsed = matter(raw);
+    data = parsed.data as Record<string, unknown>;
+    content = parsed.content;
+  } catch (error) {
     warnings.push(`Frontmatter could not be parsed: ${error instanceof Error ? error.message : "unknown error"}`);
   }
-  const orderValue = parsed.data.scene_number ?? parsed.data.chapter ?? parsed.data.order ?? Number.MAX_SAFE_INTEGER;
+  const orderValue = data.scene_number ?? data.chapter ?? data.order ?? Number.MAX_SAFE_INTEGER;
   const order = Number(orderValue);
   if (!Number.isFinite(order)) warnings.push("Invalid document order metadata");
-  const typeResult = DocumentTypeSchema.safeParse(parsed.data.type ?? inferredType(kind, category));
-  if (!typeResult.success) warnings.push(`Unknown document type: ${String(parsed.data.type)}`);
-  const id = typeof parsed.data.id === "string" && parsed.data.id.trim() ? parsed.data.id : relativePath;
+  const typeResult = DocumentTypeSchema.safeParse(data.type ?? inferredType(kind, category));
+  if (!typeResult.success) warnings.push(`Unknown document type: ${String(data.type)}`);
+  const id = typeof data.id === "string" && data.id.trim() ? data.id : relativePath;
   if (id === relativePath) warnings.push("Missing stable document id; filename is being used temporarily");
-  const tags = Array.isArray(parsed.data.tags) ? parsed.data.tags.map(String) : [];
+  const tags = Array.isArray(data.tags) ? data.tags.map(String) : [];
   return {
     id,
     path: relativePath.replaceAll("\\", "/"),
     kind,
     type: typeResult.success ? typeResult.data : "unknown",
     category,
-    title: String(parsed.data.title ?? titleFromPath(relativePath)),
+    title: String(data.title ?? titleFromPath(relativePath)),
     order: Number.isFinite(order) ? order : Number.MAX_SAFE_INTEGER,
-    status: String(parsed.data.status ?? "draft"),
+    status: String(data.status ?? "draft"),
     tags,
-    frontmatter: parsed.data,
-    body: parsed.content.replace(/^\n/, ""),
+    frontmatter: data,
+    body: content.replace(/^\n/, ""),
     raw,
-    wordCount: words(parsed.content),
+    wordCount: words(content),
     modifiedAt: stat.mtime.toISOString(),
     warnings,
   };
