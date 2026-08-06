@@ -94,3 +94,15 @@ export async function duplicateDocument(root: string, from: string, to: string):
   const source = await readDocument(root, from, from.startsWith("manuscript/") ? "manuscript" : "reference", "project");
   await createDocument(root, to, { ...source.frontmatter, id: crypto.randomUUID(), title: `${source.title} Copy` }, source.body);
 }
+
+export async function reorderDocuments(root: string, orderedPaths: string[]): Promise<void> {
+  if (!Array.isArray(orderedPaths) || orderedPaths.length === 0) throw new Error("At least one manuscript page is required");
+  if (new Set(orderedPaths).size !== orderedPaths.length) throw new Error("Manuscript order contains duplicate pages");
+  await Promise.all(orderedPaths.map(async (relativePath, index) => {
+    const document = await readDocument(root, relativePath, "manuscript", "manuscript");
+    const nextFrontmatter = { ...document.frontmatter, order: index + 1 };
+    delete nextFrontmatter.chapter;
+    delete nextFrontmatter.scene_number;
+    await writeDocument(root, relativePath, nextFrontmatter, document.body);
+  }));
+}
