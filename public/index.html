@@ -9,10 +9,10 @@
   <section id="manuscript" class="manuscript-stack"><div class="pane-title manuscript-bar"><button id="previous" title="Previous page">←</button><span id="manuscript-title">Manuscript</span><div class="page-actions"><button id="duplicate-document">Duplicate</button><button id="archive-document">Archive</button><button id="next" title="Next page">→</button></div></div><div id="manuscript-fields" class="metadata-strip"></div><textarea id="manuscript-editor" spellcheck="true"></textarea><div class="status"><span id="word-count">0 words</span><span id="warnings"></span></div></section>
   <aside id="toc" class="story-index"><div class="toc-heading"><h2>Story Pages</h2><button id="new-document">＋</button></div><input id="search" type="search" placeholder="Search project"><nav id="toc-list"></nav><div id="search-results"></div></aside>
 </main>
-
 <dialog id="prompt-dialog"><form method="dialog"><label id="prompt-label"></label><input id="prompt-input" required><menu><button value="cancel">Cancel</button><button value="default">Confirm</button></menu></form></dialog>
 <dialog id="library-dialog" class="wide"><form method="dialog"><div class="dialog-title"><h2>Project Binder Shelf</h2><button value="cancel">×</button></div><div class="library-actions"><button id="open-project" type="button">Open Existing</button><button id="create-project" type="button">Create New</button></div><div id="recent-projects" class="card-list"></div></form></dialog>
 <dialog id="create-dialog"><form method="dialog" id="create-form"><h2>Create a Project</h2><label>Name<input name="name" required></label><label>Parent folder<input name="parent" required placeholder="/Users/you/Documents"></label><label>Project type<select name="type"><option value="book">Book</option><option value="session">Session</option></select></label><label>Genre<input name="genre" value="unspecified"></label><menu><button value="cancel">Cancel</button><button value="default">Create Project</button></menu></form></dialog>
 <dialog id="drawer-dialog" class="wide"><form method="dialog"><div class="dialog-title"><h2 id="drawer-title">Details</h2><button value="cancel">×</button></div><div id="drawer-content"></div></form></dialog>
-<script type="module" src="/app.js"></script>
+<script src="/app.js"></script>
+<script src="/milestone1.js"></script>
 </body></html>
