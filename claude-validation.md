@@ -199,3 +199,39 @@ members added (and the graph diagnostics tests will then typecheck). Reported
 for the author to address; not fixed here (watch-only).
 
 ---
+
+## 2026-08-06T20:45:04Z — CI root-cause: every run fails at setup, not at build/test
+
+A CI-failure webhook fired for `62372e1` (check run `92705938059`, run
+`31127806511`) — a commit this log records as ✅ build-clean, 14/14. Reproduced
+CI's exact command locally (fresh `npm install` + `npm run check`) at `62372e1`:
+**passes, exit 0, 0 errors, 14/14.** So the CI failure is not about the code.
+
+Pulled the CI job log. The job dies in the `actions/setup-node@v4` step, before
+`npm install` or `npm run check` ever run:
+
+```
+##[error]Dependencies lock file is not found in .../loom-studio.
+Supported file patterns: package-lock.json,npm-shrinkwrap.json,yarn.lock
+```
+
+**Root cause (CI config, not code).** `.github/workflows/ci.yml` sets
+`cache: npm` on `setup-node`, which requires a committed lock file to hash. The
+repo commits **no** `package-lock.json` (confirmed: not in the tree, and not
+gitignored — just never generated). So the cache step errors out and the job
+fails **structurally on every commit**, regardless of build/test health.
+
+**Implication for this log:** CI red/green is currently *uninformative* — it
+never reaches `npm run check`. The build + test results recorded in every entry
+above (run locally) are the ground truth for code health. The two are
+independent:
+- **Code health** — genuine build failures exist at `ee4d441`…`f473dfc` (2 errs,
+  fixed by `6cb0621`) and `be2709a`…`e607aae` (3 errs, still open at HEAD).
+- **CI health** — a separate, standing config bug: every run fails at
+  `setup-node` for the missing lock file.
+
+**Fix for the author (not applied — watch-only, and it's their branch + CI):**
+either commit a `package-lock.json` (run `npm install` and commit the lockfile),
+or drop `cache: npm` from `ci.yml`. Until then, CI cannot validate any commit.
+
+---
