@@ -14,19 +14,28 @@ async function git(root: string, args: string[], allowFailure = false): Promise<
   }
 }
 
+async function ensureIdentity(root: string): Promise<void> {
+  const name = await git(root, ["config", "user.name"], true);
+  const email = await git(root, ["config", "user.email"], true);
+  if (!name) await git(root, ["config", "user.name", "Loom Studio Author"]);
+  if (!email) await git(root, ["config", "user.email", "author@loom-studio.local"]);
+}
+
 export async function ensureRepository(root: string): Promise<void> {
-  if (await git(root, ["rev-parse", "--is-inside-work-tree"], true) === "true") return;
-  await git(root, ["init", "-b", "main"]);
-  await git(root, ["add", "."]);
-  await git(root, ["commit", "-m", "Begin project"]);
+  const initialized = await git(root, ["rev-parse", "--is-inside-work-tree"], true) === "true";
+  if (!initialized) await git(root, ["init", "-b", "main"]);
+  await ensureIdentity(root);
+  const hasHead = Boolean(await git(root, ["rev-parse", "--verify", "HEAD"], true));
+  if (!hasHead) {
+    await git(root, ["add", "."]);
+    await git(root, ["commit", "-m", "Begin project"]);
+  }
 }
 
 export async function createBookmark(root: string, message: string): Promise<void> {
   if (!message.trim()) throw new Error("Bookmark message is required");
   await ensureRepository(root);
   await git(root, ["add", "-A"]);
-  const staged = await git(root, ["diff", "--cached", "--quiet"], true);
-  // `--quiet` emits no output whether clean or dirty; commit and tolerate clean trees.
   await git(root, ["commit", "--allow-empty", "-m", message.trim()]);
 }
 
@@ -38,12 +47,14 @@ export function timelineRef(name: string): string {
 
 export async function createTimeline(root: string, name: string): Promise<string> {
   await ensureRepository(root);
+  if (await git(root, ["status", "--porcelain"], true)) throw new Error("Create a bookmark before starting a new timeline");
   const ref = timelineRef(name);
   await git(root, ["switch", "-c", ref]);
   return ref;
 }
 
 export async function switchTimeline(root: string, name: string): Promise<void> {
+  if (await git(root, ["status", "--porcelain"], true)) throw new Error("Create a bookmark before switching timelines");
   await git(root, ["switch", name]);
 }
 
