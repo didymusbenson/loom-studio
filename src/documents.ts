@@ -100,7 +100,7 @@ export async function reorderDocuments(root: string, orderedPaths: string[]): Pr
   if (new Set(orderedPaths).size !== orderedPaths.length) throw new Error("Manuscript order contains duplicate pages");
   await Promise.all(orderedPaths.map(async (relativePath, index) => {
     const document = await readDocument(root, relativePath, "manuscript", "manuscript");
-    const nextFrontmatter = { ...document.frontmatter, order: index + 1 };
+    const nextFrontmatter: Record<string, unknown> = { ...document.frontmatter, order: index + 1 };
     delete nextFrontmatter.chapter;
     delete nextFrontmatter.scene_number;
     await writeDocument(root, relativePath, nextFrontmatter, document.body);
