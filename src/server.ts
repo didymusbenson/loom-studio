@@ -7,6 +7,7 @@ import { indexProject } from "./project.js";
 import { createDocument, duplicateDocument, renameDocument, writeDocument } from "./documents.js";
 import { archiveItem, listArchive, moveArchiveToTrash, permanentlyDeleteTrashItem, restoreArchivedItem } from "./archive.js";
 import { createProject, forgetProject, listRecentProjects, rememberProject } from "./lifecycle.js";
+import { inspectManifest, migrateManifest, repairManifest } from "./migrations.js";
 import { bookmarkAndSwitch, createBookmark, createTimeline, deleteTimeline, ensureRepository, renameTimeline, restoreBookmark, revisionStatus, switchTimeline } from "./revisions.js";
 
 const app = express();
@@ -22,7 +23,7 @@ app.use(express.static(path.resolve("public")));
 
 async function snapshot() {
   const indexed = await indexProject(projectRoot);
-  return { root: projectRoot, ...indexed, revision: await revisionStatus(projectRoot), archive: await listArchive(projectRoot) };
+  return { root: projectRoot, ...indexed, revision: await revisionStatus(projectRoot), archive: await listArchive(projectRoot), manifestInspection: await inspectManifest(projectRoot) };
 }
 
 function broadcast(type: string) {
@@ -42,31 +43,28 @@ async function watchProject() {
 app.get("/api/library", async (_req, res, next) => { try { res.json({ recent: await listRecentProjects() }); } catch (error) { next(error); } });
 app.delete("/api/library/recent", async (req, res, next) => { try { await forgetProject(String(req.body.path ?? "")); res.json({ recent: await listRecentProjects() }); } catch (error) { next(error); } });
 app.post("/api/projects", async (req, res, next) => {
-  try {
-    projectRoot = await createProject(req.body);
-    await watchProject();
-    res.status(201).json(await snapshot());
-  } catch (error) { next(error); }
+  try { projectRoot = await createProject(req.body); await watchProject(); res.status(201).json(await snapshot()); } catch (error) { next(error); }
 });
 app.get("/api/project", async (_req, res, next) => { try { res.json(await snapshot()); } catch (error) { next(error); } });
 app.post("/api/open", async (req, res, next) => {
   try {
     if (typeof req.body.path !== "string") throw new Error("path is required");
     projectRoot = path.resolve(req.body.path);
+    const inspection = await inspectManifest(projectRoot);
+    if (!inspection.valid) return res.status(409).json({ error: "This project needs repair before it can be opened", inspection, root: projectRoot });
     const indexed = await indexProject(projectRoot);
     await rememberProject(projectRoot, indexed.manifest.name);
     await watchProject();
     res.json(await snapshot());
   } catch (error) { next(error); }
 });
+app.get("/api/manifest/inspect", async (_req, res, next) => { try { res.json(await inspectManifest(projectRoot)); } catch (error) { next(error); } });
+app.post("/api/manifest/migrate", async (_req, res, next) => { try { await migrateManifest(projectRoot); broadcast("project-changed"); res.json(await snapshot()); } catch (error) { next(error); } });
+app.post("/api/manifest/repair", async (req, res, next) => { try { await repairManifest(projectRoot, req.body ?? {}); await rememberProject(projectRoot, String(req.body?.name ?? path.basename(projectRoot))); await watchProject(); res.json(await snapshot()); } catch (error) { next(error); } });
 
 app.post("/api/documents", async (req, res, next) => { try { await createDocument(projectRoot, String(req.body.path), req.body.frontmatter ?? {}, String(req.body.body ?? "")); res.status(201).json(await snapshot()); } catch (error) { next(error); } });
 app.put("/api/documents/*path", async (req, res, next) => {
-  try {
-    const relative = Array.isArray(req.params.path) ? req.params.path.join("/") : String(req.params.path);
-    await writeDocument(projectRoot, relative, req.body.frontmatter ?? {}, String(req.body.body ?? ""));
-    res.json({ ok: true });
-  } catch (error) { next(error); }
+  try { const relative = Array.isArray(req.params.path) ? req.params.path.join("/") : String(req.params.path); await writeDocument(projectRoot, relative, req.body.frontmatter ?? {}, String(req.body.body ?? "")); res.json({ ok: true }); } catch (error) { next(error); }
 });
 app.post("/api/documents/rename", async (req, res, next) => { try { await renameDocument(projectRoot, String(req.body.from), String(req.body.to)); res.json(await snapshot()); } catch (error) { next(error); } });
 app.post("/api/documents/duplicate", async (req, res, next) => { try { await duplicateDocument(projectRoot, String(req.body.from), String(req.body.to)); res.json(await snapshot()); } catch (error) { next(error); } });
