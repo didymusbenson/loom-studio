@@ -1,0 +1,13 @@
+{
+  "loom_version": "1.0.0",
+  "name": "The Lantern Archive",
+  "type": "book",
+  "genre": "fantasy mystery",
+  "manuscript": { "roots": ["manuscript"] },
+  "references": {
+    "characters": ["characters"],
+    "world": ["world"],
+    "project": ["project"]
+  },
+  "ui": { "default_reference_category": "characters" }
+}
