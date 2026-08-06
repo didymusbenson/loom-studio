@@ -1,0 +1,73 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { createProject } from "../src/lifecycle.js";
+import { archiveItem, listArchive, permanentlyDeleteTrashItem, restoreArchivedItem } from "../src/archive.js";
+import { createDocument, readDocument, renameDocument, writeDocument } from "../src/documents.js";
+import { indexProject } from "../src/project.js";
+import { inspectManifest, migrateManifest, repairManifest } from "../src/migrations.js";
+
+async function tempRoot(): Promise<string> { return fs.mkdtemp(path.join(os.tmpdir(), "loom-studio-m1-")); }
+
+test("creates an external author-ready project", async () => {
+  const parent = await tempRoot();
+  const root = await createProject({ name: "Paper Moons", parent, genre: "fantasy" });
+  const manifest = JSON.parse(await fs.readFile(path.join(root, "loom.json"), "utf8"));
+  assert.equal(manifest.loom_version, "1.0.0");
+  assert.equal(manifest.name, "Paper Moons");
+  assert.ok(manifest.project_id);
+  assert.ok((await fs.stat(path.join(root, ".git"))).isDirectory());
+  assert.ok((await fs.stat(path.join(root, "manuscript", "chapter-001.md"))).isFile());
+});
+
+test("preserves stable ids and unknown metadata through edits and renames", async () => {
+  const parent = await tempRoot();
+  const root = await createProject({ name: "Identity Test", parent });
+  const original = await readDocument(root, "manuscript/chapter-001.md", "manuscript", "manuscript");
+  await writeDocument(root, original.path, { ...original.frontmatter, custom_field: "keep me" }, "Changed prose");
+  await renameDocument(root, original.path, "manuscript/opening.md");
+  const renamed = await readDocument(root, "manuscript/opening.md", "manuscript", "manuscript");
+  assert.equal(renamed.id, original.id);
+  assert.equal(renamed.frontmatter.custom_field, "keep me");
+  assert.match(renamed.body, /Changed prose/);
+});
+
+test("archives and restores rather than deleting", async () => {
+  const parent = await tempRoot();
+  const root = await createProject({ name: "Archive Test", parent });
+  const item = await archiveItem(root, "manuscript/chapter-001.md");
+  assert.equal((await listArchive(root)).length, 1);
+  await restoreArchivedItem(root, item.id);
+  assert.ok((await fs.stat(path.join(root, "manuscript/chapter-001.md"))).isFile());
+  await assert.rejects(() => permanentlyDeleteTrashItem(root, "anything", "no"), /DELETE FOREVER/);
+});
+
+test("repairs malformed manifests and writes a backup", async () => {
+  const root = await tempRoot();
+  await fs.writeFile(path.join(root, "loom.json"), "{broken", "utf8");
+  assert.equal((await inspectManifest(root)).valid, false);
+  const repaired = await repairManifest(root, { name: "Recovered Book" });
+  assert.equal(repaired.name, "Recovered Book");
+  assert.equal((await inspectManifest(root)).valid, true);
+  assert.ok((await fs.readdir(root)).some(name => name.startsWith("loom.json.backup-")));
+});
+
+test("migrates old manifests to the current contract", async () => {
+  const root = await tempRoot();
+  await fs.writeFile(path.join(root, "loom.json"), JSON.stringify({ loom_version: "0.1", name: "Old Book" }), "utf8");
+  const migrated = await migrateManifest(root);
+  assert.equal(migrated.loom_version, "1.0.0");
+  assert.equal(migrated.name, "Old Book");
+});
+
+test("reports duplicate ids and unresolved character references", async () => {
+  const parent = await tempRoot();
+  const root = await createProject({ name: "Diagnostics", parent });
+  const first = await readDocument(root, "manuscript/chapter-001.md", "manuscript", "manuscript");
+  await createDocument(root, "manuscript/chapter-002.md", { id: first.id, type: "chapter", title: "Two", characters_present: ["Missing Person"] }, "Second");
+  const { graph } = await indexProject(root);
+  assert.ok(graph.diagnostics.some(item => item.code === "duplicate-id"));
+  assert.ok(graph.diagnostics.some(item => item.code === "missing-character"));
+});
