@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { createProject } from "../src/lifecycle.js";
 import { archiveItem, listArchive, permanentlyDeleteTrashItem, restoreArchivedItem } from "../src/archive.js";
-import { createDocument, readDocument, renameDocument, writeDocument } from "../src/documents.js";
+import { createDocument, readDocument, renameDocument, reorderDocuments, writeDocument } from "../src/documents.js";
 import { indexProject } from "../src/project.js";
 import { inspectManifest, migrateManifest, repairManifest } from "../src/migrations.js";
 
@@ -32,6 +32,20 @@ test("preserves stable ids and unknown metadata through edits and renames", asyn
   assert.equal(renamed.id, original.id);
   assert.equal(renamed.frontmatter.custom_field, "keep me");
   assert.match(renamed.body, /Changed prose/);
+});
+
+test("persists authored manuscript order without changing stable ids", async () => {
+  const parent = await tempRoot();
+  const root = await createProject({ name: "Order Test", parent });
+  await createDocument(root, "manuscript/chapter-002.md", { type: "chapter", title: "Second", order: 2 }, "Second page");
+  const before = await indexProject(root);
+  const firstId = before.graph.manuscripts[0]?.id;
+  const secondId = before.graph.manuscripts[1]?.id;
+  await reorderDocuments(root, ["manuscript/chapter-002.md", "manuscript/chapter-001.md"]);
+  const after = await indexProject(root);
+  assert.deepEqual(after.graph.manuscripts.map(item => item.path), ["manuscript/chapter-002.md", "manuscript/chapter-001.md"]);
+  assert.equal(after.graph.manuscripts[0]?.id, secondId);
+  assert.equal(after.graph.manuscripts[1]?.id, firstId);
 });
 
 test("archives and restores rather than deleting", async () => {
