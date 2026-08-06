@@ -5,7 +5,7 @@ import chokidar, { type FSWatcher } from "chokidar";
 import { WebSocketServer } from "ws";
 import { indexProject } from "./project.js";
 import { createDocument, duplicateDocument, renameDocument, reorderDocuments, writeDocument } from "./documents.js";
-import { archiveItem, listArchive, moveArchiveToTrash, permanentlyDeleteTrashItem, restoreArchivedItem } from "./archive.js";
+import { archiveItem, listArchive, listTrash, moveArchiveToTrash, permanentlyDeleteTrashItem, restoreArchivedItem } from "./archive.js";
 import { createProject, forgetProject, listRecentProjects, rememberProject } from "./lifecycle.js";
 import { inspectManifest, migrateManifest, repairManifest } from "./migrations.js";
 import { bookmarkAndSwitch, createBookmark, createTimeline, deleteTimeline, ensureRepository, renameTimeline, restoreBookmark, revisionStatus, switchTimeline } from "./revisions.js";
@@ -23,7 +23,10 @@ app.use(express.static(path.resolve("public")));
 
 async function snapshot() {
   const indexed = await indexProject(projectRoot);
-  return { root: projectRoot, ...indexed, revision: await revisionStatus(projectRoot), archive: await listArchive(projectRoot), manifestInspection: await inspectManifest(projectRoot) };
+  const [revision, archive, trash, manifestInspection] = await Promise.all([
+    revisionStatus(projectRoot), listArchive(projectRoot), listTrash(projectRoot), inspectManifest(projectRoot),
+  ]);
+  return { root: projectRoot, ...indexed, revision, archive, trash, manifestInspection };
 }
 
 function broadcast(type: string) {
@@ -68,7 +71,7 @@ app.post("/api/documents/duplicate", async (req, res, next) => { try { await dup
 app.post("/api/documents/archive", async (req, res, next) => { try { res.json({ item: await archiveItem(projectRoot, String(req.body.path)), snapshot: await snapshot() }); } catch (error) { next(error); } });
 app.post("/api/archive/restore", async (req, res, next) => { try { await restoreArchivedItem(projectRoot, String(req.body.id)); res.json(await snapshot()); } catch (error) { next(error); } });
 app.post("/api/archive/trash", async (req, res, next) => { try { await moveArchiveToTrash(projectRoot, String(req.body.id)); res.json(await snapshot()); } catch (error) { next(error); } });
-app.delete("/api/trash", async (req, res, next) => { try { await permanentlyDeleteTrashItem(projectRoot, String(req.body.id), String(req.body.confirmation)); res.json({ ok: true }); } catch (error) { next(error); } });
+app.delete("/api/trash", async (req, res, next) => { try { await permanentlyDeleteTrashItem(projectRoot, String(req.body.id), String(req.body.confirmation)); res.json(await snapshot()); } catch (error) { next(error); } });
 
 app.post("/api/revisions/init", async (_req, res, next) => { try { await ensureRepository(projectRoot); res.json(await revisionStatus(projectRoot)); } catch (error) { next(error); } });
 app.post("/api/revisions/bookmarks", async (req, res, next) => { try { await createBookmark(projectRoot, String(req.body.message ?? "")); res.json(await revisionStatus(projectRoot)); } catch (error) { next(error); } });
