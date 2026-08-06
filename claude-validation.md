@@ -150,3 +150,52 @@ fixed downstream — current HEAD `ffc2502` remains ✅ build clean (0 errors),
 ✅ 14/14 tests. No open build failure on the branch tip.
 
 ---
+
+## 2026-08-06T20:21:47Z — commits `62372e1` … `e607aae` (7 commits) ⚠️ tip is broken
+
+Seven new commits since `ffc2502`. Each built + tested individually.
+
+| Commit | Subject | Build | Tests |
+|--------|---------|-------|-------|
+| `62372e1` | feat(ui): complete author-ready binder workflows | ✅ 0 errors | ✅ 14/14 |
+| `9684c05` | refactor(ui): consolidate milestone workflows into main application | ✅ 0 errors | ❌ **13/14** |
+| `5806867` | test(ui): validate consolidated author-ready workflows | ✅ 0 errors | ✅ 14/14 |
+| `ff01970` | chore(ui): remove superseded milestone workflow shim | ✅ 0 errors | ✅ 14/14 |
+| `be2709a` | feat(graph): derive relationship references and broken-link diagnostics | ❌ **1 error** | ✅ 14/14 |
+| `6479e1c` | test(graph): cover typed relationships and broken links | ❌ **3 errors** | ✅ 15/15 |
+| `e607aae` | docs(validation): mark milestone one development complete | ❌ **3 errors** | ✅ 15/15 |
+
+### Two separate regressions this range
+
+**1. Test regression at `9684c05` (self-healed).** The workflow-consolidation
+refactor broke one test — `not ok 12 - loads the author-ready workflow and
+tactile binder styles` (AssertionError). Build stayed clean. The very next
+commit `5806867` restored it to 14/14, so it did not reach the tip.
+
+**2. Build regression at `be2709a` — still open at HEAD.** New graph code emits
+relationship kinds `"relationship-from"` / `"relationship-to"`, but the kind
+union in `project.ts` was never extended to include them:
+
+| Location | Error | Detail |
+|----------|-------|--------|
+| `project.ts:93:63` | TS2322 | `"relationship-from" \| "relationship-to"` not assignable to union `"references" \| "relationship" \| "features" \| "pov" \| "located-at"` |
+
+Then `6479e1c` added tests comparing against those same literals, so `tsc`
+flags two more **TS2367 "no overlap"** errors in the test file (the union still
+lacks the members):
+
+| Location | Error | Detail |
+|----------|-------|--------|
+| `tests/milestone1.test.ts:102:38` | TS2367 | compares union with `"relationship-from"` — no overlap |
+| `tests/milestone1.test.ts:103:38` | TS2367 | compares union with `"relationship-to"` — no overlap |
+
+All 3 errors trace to one root cause (the missing union members) and persist
+unchanged through `6479e1c` and `e607aae`.
+
+**Current HEAD `e607aae`: ❌ build FAILS (3 errors), ✅ 15/15 tests.** Note the
+tip commit message marks milestone-1 "development complete," but the TypeScript
+build is red — the `project.ts` relationship-kind union needs the two new
+members added (and the graph diagnostics tests will then typecheck). Reported
+for the author to address; not fixed here (watch-only).
+
+---
