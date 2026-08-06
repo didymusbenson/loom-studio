@@ -90,3 +90,20 @@ so `chapter` and `scene_number` are rejected:
 All 10 tests pass on every one of the 4 commits. No test failures introduced.
 
 ---
+
+## 2026-08-06T18:49:51Z — commits `cca3aa9`, `6cb0621`, `ffc2502`
+
+| Commit | Subject | Build | Tests |
+|--------|---------|-------|-------|
+| `cca3aa9` | style(ui): load milestone interaction polish | ❌ 2 errors | ✅ 11/11 |
+| `6cb0621` | fix(build): keep reordered frontmatter indexable | ✅ **0 errors** | ✅ 11/11 |
+| `ffc2502` | test(ui): enforce author-facing milestone one contract | ✅ **0 errors** | ✅ **14/14** |
+
+**Progression:** `cca3aa9` still carried the 2 `documents.ts` errors from the
+`91ab2dc` regression. `6cb0621` cleared them (`documents.ts:104-105` now
+indexable again) — build green. `ffc2502` added tests (suite grew 11 → 14) and
+stays green.
+
+**Current HEAD `ffc2502`: ✅ build clean (0 errors), ✅ 14/14 tests passing.**
+
+---
