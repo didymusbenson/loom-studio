@@ -60,6 +60,11 @@ export async function indexProject(root: string): Promise<{ manifest: LoomManife
   for (const doc of documents) (ids.get(doc.id) ?? ids.set(doc.id, []).get(doc.id)!).push(doc);
   for (const [id, matches] of ids) if (matches.length > 1) diagnostics.push({ severity: "error", code: "duplicate-id", message: `Document id ${id} is used ${matches.length} times`, documentId: id });
 
+  const resolveDocument = (value: unknown): LoomDocument | undefined => {
+    const key = normalized(value);
+    return documents.find(doc => doc.id === String(value) || normalized(doc.title) === key || normalized(doc.frontmatter.name) === key);
+  };
+
   for (const doc of documents) {
     for (const warning of doc.warnings) diagnostics.push({ severity: "warning", code: "document-warning", message: warning, path: doc.path, documentId: doc.id });
     const present = Array.isArray(doc.frontmatter.characters_present) ? doc.frontmatter.characters_present : [];
@@ -79,6 +84,21 @@ export async function indexProject(root: string): Promise<{ manifest: LoomManife
       const location = locations.find(item => normalized(item.name) === normalized(locationValue) || item.id === String(locationValue));
       if (location) links.push({ from: doc.id, to: location.id, type: "located-at" });
       else diagnostics.push({ severity: "info", code: "missing-location", message: `Location ${String(locationValue)} has no location sheet`, path: doc.path, documentId: doc.id });
+    }
+    if (doc.type === "relationship") {
+      for (const endpoint of ["from", "to"] as const) {
+        const value = doc.frontmatter[endpoint];
+        if (!value) continue;
+        const target = resolveDocument(value);
+        if (target) links.push({ from: doc.id, to: target.id, type: `relationship-${endpoint}` });
+        else diagnostics.push({ severity: "warning", code: "broken-link", message: `Relationship endpoint ${String(value)} does not resolve to a project document`, path: doc.path, documentId: doc.id });
+      }
+    }
+    const referencesValue = Array.isArray(doc.frontmatter.references) ? doc.frontmatter.references : [];
+    for (const value of referencesValue) {
+      const target = resolveDocument(value);
+      if (target) links.push({ from: doc.id, to: target.id, type: "references" });
+      else diagnostics.push({ severity: "warning", code: "broken-link", message: `Reference ${String(value)} does not resolve to a project document`, path: doc.path, documentId: doc.id });
     }
   }
 
