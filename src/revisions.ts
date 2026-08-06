@@ -10,7 +10,7 @@ async function git(root: string, args: string[], allowFailure = false): Promise<
     return stdout.trim();
   } catch (error) {
     if (allowFailure) return "";
-    throw new Error(`Git command failed: git ${args.join(" ")}`, { cause: error });
+    throw new Error(`Project history operation failed`, { cause: error });
   }
 }
 
@@ -39,6 +39,13 @@ export async function createBookmark(root: string, message: string): Promise<voi
   await git(root, ["commit", "--allow-empty", "-m", message.trim()]);
 }
 
+export async function restoreBookmark(root: string, bookmarkId: string): Promise<void> {
+  if (await git(root, ["status", "--porcelain"], true)) throw new Error("Create a bookmark before going back");
+  const valid = await git(root, ["cat-file", "-t", bookmarkId], true);
+  if (valid !== "commit") throw new Error("Bookmark could not be found");
+  await git(root, ["reset", "--hard", bookmarkId]);
+}
+
 export function timelineRef(name: string): string {
   const slug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   if (!slug) throw new Error("Timeline name must contain letters or numbers");
@@ -58,12 +65,29 @@ export async function switchTimeline(root: string, name: string): Promise<void> 
   await git(root, ["switch", name]);
 }
 
+export async function bookmarkAndSwitch(root: string, message: string, timeline: string): Promise<void> {
+  await createBookmark(root, message);
+  await switchTimeline(root, timeline);
+}
+
+export async function renameTimeline(root: string, current: string, nextName: string): Promise<string> {
+  const next = timelineRef(nextName);
+  await git(root, ["branch", "-m", current, next]);
+  return next;
+}
+
+export async function deleteTimeline(root: string, timeline: string): Promise<void> {
+  const current = await git(root, ["branch", "--show-current"], true);
+  if (current === timeline) throw new Error("Switch to another timeline before archiving this one");
+  await git(root, ["branch", "-D", timeline]);
+}
+
 export async function revisionStatus(root: string): Promise<RevisionStatus> {
   const initialized = await git(root, ["rev-parse", "--is-inside-work-tree"], true) === "true";
   if (!initialized) return { initialized: false, timeline: null, dirty: false, bookmarks: [], timelines: [] };
   const timeline = await git(root, ["branch", "--show-current"], true) || null;
   const dirty = Boolean(await git(root, ["status", "--porcelain"], true));
-  const log = await git(root, ["log", "--pretty=format:%H%x09%aI%x09%s", "-n", "50"], true);
+  const log = await git(root, ["log", "--pretty=format:%H%x09%aI%x09%s", "-n", "100"], true);
   const bookmarks = log ? log.split("\n").map(line => { const [id = "", date = "", ...message] = line.split("\t"); return { id, date, message: message.join("\t") }; }) : [];
   const branchText = await git(root, ["for-each-ref", "--format=%(refname:short)", "refs/heads"], true);
   const timelines = branchText ? branchText.split("\n") : [];
