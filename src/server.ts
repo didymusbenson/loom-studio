@@ -4,7 +4,7 @@ import express from "express";
 import chokidar, { type FSWatcher } from "chokidar";
 import { WebSocketServer } from "ws";
 import { indexProject } from "./project.js";
-import { createDocument, duplicateDocument, renameDocument, writeDocument } from "./documents.js";
+import { createDocument, duplicateDocument, renameDocument, reorderDocuments, writeDocument } from "./documents.js";
 import { archiveItem, listArchive, moveArchiveToTrash, permanentlyDeleteTrashItem, restoreArchivedItem } from "./archive.js";
 import { createProject, forgetProject, listRecentProjects, rememberProject } from "./lifecycle.js";
 import { inspectManifest, migrateManifest, repairManifest } from "./migrations.js";
@@ -42,9 +42,7 @@ async function watchProject() {
 
 app.get("/api/library", async (_req, res, next) => { try { res.json({ recent: await listRecentProjects() }); } catch (error) { next(error); } });
 app.delete("/api/library/recent", async (req, res, next) => { try { await forgetProject(String(req.body.path ?? "")); res.json({ recent: await listRecentProjects() }); } catch (error) { next(error); } });
-app.post("/api/projects", async (req, res, next) => {
-  try { projectRoot = await createProject(req.body); await watchProject(); res.status(201).json(await snapshot()); } catch (error) { next(error); }
-});
+app.post("/api/projects", async (req, res, next) => { try { projectRoot = await createProject(req.body); await watchProject(); res.status(201).json(await snapshot()); } catch (error) { next(error); } });
 app.get("/api/project", async (_req, res, next) => { try { res.json(await snapshot()); } catch (error) { next(error); } });
 app.post("/api/open", async (req, res, next) => {
   try {
@@ -63,9 +61,8 @@ app.post("/api/manifest/migrate", async (_req, res, next) => { try { await migra
 app.post("/api/manifest/repair", async (req, res, next) => { try { await repairManifest(projectRoot, req.body ?? {}); await rememberProject(projectRoot, String(req.body?.name ?? path.basename(projectRoot))); await watchProject(); res.json(await snapshot()); } catch (error) { next(error); } });
 
 app.post("/api/documents", async (req, res, next) => { try { await createDocument(projectRoot, String(req.body.path), req.body.frontmatter ?? {}, String(req.body.body ?? "")); res.status(201).json(await snapshot()); } catch (error) { next(error); } });
-app.put("/api/documents/*path", async (req, res, next) => {
-  try { const relative = Array.isArray(req.params.path) ? req.params.path.join("/") : String(req.params.path); await writeDocument(projectRoot, relative, req.body.frontmatter ?? {}, String(req.body.body ?? "")); res.json({ ok: true }); } catch (error) { next(error); }
-});
+app.put("/api/documents/*path", async (req, res, next) => { try { const relative = Array.isArray(req.params.path) ? req.params.path.join("/") : String(req.params.path); await writeDocument(projectRoot, relative, req.body.frontmatter ?? {}, String(req.body.body ?? "")); res.json({ ok: true }); } catch (error) { next(error); } });
+app.post("/api/documents/reorder", async (req, res, next) => { try { await reorderDocuments(projectRoot, req.body.paths); res.json(await snapshot()); } catch (error) { next(error); } });
 app.post("/api/documents/rename", async (req, res, next) => { try { await renameDocument(projectRoot, String(req.body.from), String(req.body.to)); res.json(await snapshot()); } catch (error) { next(error); } });
 app.post("/api/documents/duplicate", async (req, res, next) => { try { await duplicateDocument(projectRoot, String(req.body.from), String(req.body.to)); res.json(await snapshot()); } catch (error) { next(error); } });
 app.post("/api/documents/archive", async (req, res, next) => { try { res.json({ item: await archiveItem(projectRoot, String(req.body.path)), snapshot: await snapshot() }); } catch (error) { next(error); } });
