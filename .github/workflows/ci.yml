@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, feat/milestone-0]
+    branches: [main, feat/milestone-0, milestone-1]
   pull_request:
 
 jobs:
@@ -13,5 +13,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
       - run: npm install
       - run: npm run check
