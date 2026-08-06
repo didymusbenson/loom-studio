@@ -85,3 +85,22 @@ test("reports duplicate ids and unresolved character references", async () => {
   assert.ok(graph.diagnostics.some(item => item.code === "duplicate-id"));
   assert.ok(graph.diagnostics.some(item => item.code === "missing-character"));
 });
+
+test("derives POV, location, appearance, relationship, tag, and broken-link graph data", async () => {
+  const parent = await tempRoot();
+  const root = await createProject({ name: "Graph Test", parent });
+  await createDocument(root, "characters/mara.md", { id: "char-mara", type: "character", title: "Mara", name: "Mara", tags: ["crew"] }, "Mara");
+  await createDocument(root, "world/harbor.md", { id: "loc-harbor", type: "location", title: "Harbor", name: "Harbor" }, "Harbor");
+  await createDocument(root, "relationships/mara-harbor.md", { id: "rel-1", type: "relationship", title: "Mara and Harbor", from: "Mara", to: "Harbor" }, "Connection");
+  await createDocument(root, "relationships/broken.md", { id: "rel-2", type: "relationship", title: "Broken", from: "Mara", to: "Nobody" }, "Broken");
+  const first = await readDocument(root, "manuscript/chapter-001.md", "manuscript", "manuscript");
+  await writeDocument(root, first.path, { ...first.frontmatter, pov: "Mara", location: "Harbor", characters_present: ["Mara"], tags: ["opening"] }, first.body);
+  const { graph } = await indexProject(root);
+  assert.ok(graph.links.some(link => link.type === "pov" && link.to === "char-mara"));
+  assert.ok(graph.links.some(link => link.type === "located-at" && link.to === "loc-harbor"));
+  assert.ok(graph.links.some(link => link.type === "features" && link.to === "char-mara"));
+  assert.ok(graph.links.some(link => link.type === "relationship-from" && link.from === "rel-1"));
+  assert.ok(graph.links.some(link => link.type === "relationship-to" && link.from === "rel-1"));
+  assert.ok(graph.tags.some(tag => tag.name === "opening"));
+  assert.ok(graph.diagnostics.some(item => item.code === "broken-link"));
+});
