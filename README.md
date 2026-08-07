@@ -68,5 +68,11 @@ The current UI is intentionally dependency-light. It proves the authoring, file,
 
 ## Documentation
 
-- [`docs/architecture.md`](docs/architecture.md)
+- [`AGENTS.md`](AGENTS.md) — operating rules for coding assistants
+- [`PROJECT_STATE.md`](PROJECT_STATE.md) — current status and resume point
+- [`docs/architecture/vision.md`](docs/architecture/vision.md) — product constitution and permanent boundaries
+- [`docs/architecture/milestone-2.md`](docs/architecture/milestone-2.md) — active milestone scope and completion gate
+- [`docs/architecture/decisions.md`](docs/architecture/decisions.md) — architectural decision index
+- [`docs/validation/milestone-2.json`](docs/validation/milestone-2.json) — authoritative acceptance contract
+- [`docs/architecture.md`](docs/architecture.md) — implementation architecture overview
 - [`docs/project-format.md`](docs/project-format.md)

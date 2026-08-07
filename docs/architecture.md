@@ -1,5 +1,7 @@
 # Architecture
 
+For durable product boundaries and decision rationale, also read the [product vision](architecture/vision.md), [Milestone 2 architecture](architecture/milestone-2.md), and [ADR index](architecture/decisions.md).
+
 Loom Studio is a local application that opens Loom projects wherever they live on disk. The application repository never becomes the parent history for a user's manuscripts.
 
 ## System boundaries

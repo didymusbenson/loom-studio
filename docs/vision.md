@@ -1,5 +1,7 @@
 # Loom Studio Product Constitution
 
+> Canonical living version: [`architecture/vision.md`](architecture/vision.md). This document preserves the original Milestone 1 constitution.
+
 ## Purpose
 
 Loom Studio is a local-first writing environment for authors who use one or more AI assistants but refuse to make any assistant the owner of their work.

@@ -1,5 +1,7 @@
 # Milestone 2 — Engine Packs and Assistant Observation
 
+> Current milestone contract and remaining-work summary: [`architecture/milestone-2.md`](architecture/milestone-2.md). Acceptance status is authoritative in [`validation/milestone-2.json`](validation/milestone-2.json).
+
 ## Product boundary
 
 Loom Studio does **not** become an embedded AI client. Authors continue prompting through Claude Code, Codex, Gemini CLI, local tools, desktop apps, terminals, editors, or any workflow they prefer.
