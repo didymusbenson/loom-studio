@@ -1,4 +1,5 @@
 ---
+id: archive
 title: The Lantern Archive
 category: location
 ---

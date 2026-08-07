@@ -6,8 +6,7 @@
   "manuscript": { "roots": ["manuscript"] },
   "references": {
     "characters": ["characters"],
-    "world": ["world"],
-    "project": ["project"]
+    "world": ["world"]
   },
   "ui": { "default_reference_category": "characters" }
 }

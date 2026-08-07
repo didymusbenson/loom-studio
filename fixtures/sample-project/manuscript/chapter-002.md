@@ -1,4 +1,5 @@
 ---
+id: chapter-002
 title: What the Archive Forgot
 chapter: 2
 scene_number: 2
