@@ -19,8 +19,71 @@ async function renderAssistantDesk() {
 }
 async function renderEvents() { if (!selectedSession) { m2("activity-feed").innerHTML = `<div class="assistant-empty">Select a session to see reported activity.</div>`; return; } const events = await m2api(`/api/assistants/sessions/${encodeURIComponent(selectedSession)}/events`); m2("activity-feed").innerHTML = events.length ? events.map(event => `<article class="activity-card ${m2esc(event.type)}"><time>${m2esc(new Date(event.at).toLocaleTimeString())}</time><strong>${m2esc(event.summary)}</strong>${event.path ? `<small>${m2esc(event.path)}</small>` : ""}</article>`).join("") : `<div class="assistant-empty">This session has not reported activity yet.</div>`; }
 
-const desk = document.createElement("aside"); desk.id = "assistant-desk"; desk.className = "assistant-desk collapsed"; desk.innerHTML = `<button id="assistant-desk-toggle" class="assistant-tab" aria-expanded="false">Collaborators <span id="assistant-badge"></span></button><div class="assistant-desk-body"><header><div><h2>Collaborator Desk</h2><small id="assistant-capabilities"></small></div><button id="compile-runtime">Prepare context</button></header><nav class="assistant-desk-tabs"><button data-desk-tab="activity" class="active">Activity</button><button data-desk-tab="proposals">Proposed changes</button><button data-desk-tab="engines">Engine packs</button></nav><section data-desk-panel="activity"><div id="assistant-sessions"></div><div id="activity-feed"></div></section><section data-desk-panel="proposals" hidden><div id="proposal-list"></div></section><section data-desk-panel="engines" hidden><div id="engine-list"></div></section></div>`; document.body.append(desk);
-m2("assistant-desk-toggle").onclick = async () => { desk.classList.toggle("collapsed"); const open = !desk.classList.contains("collapsed"); m2("assistant-desk-toggle").setAttribute("aria-expanded", String(open)); if (open) { await renderAssistantDesk(); await renderEvents(); } };
+const deskBackdrop = document.createElement("div");
+deskBackdrop.className = "assistant-desk-backdrop";
+deskBackdrop.hidden = true;
+document.body.append(deskBackdrop);
+
+const desk = document.createElement("aside"); desk.id = "assistant-desk"; desk.className = "assistant-desk collapsed"; desk.setAttribute("aria-label", "Collaborator Desk"); desk.innerHTML = `<button id="assistant-desk-toggle" class="assistant-tab" aria-expanded="false" aria-controls="assistant-desk-body">Collaborators <span id="assistant-badge"></span></button><div id="assistant-desk-body" class="assistant-desk-body" aria-hidden="true"><header><div><h2>Collaborator Desk</h2><small id="assistant-capabilities"></small></div><button id="compile-runtime">Prepare context</button></header><nav class="assistant-desk-tabs" aria-label="Collaborator Desk sections"><button data-desk-tab="activity" class="active">Activity</button><button data-desk-tab="proposals">Proposed changes</button><button data-desk-tab="engines">Engine packs</button></nav><section data-desk-panel="activity"><div id="assistant-sessions"></div><div id="activity-feed"></div></section><section data-desk-panel="proposals" hidden><div id="proposal-list"></div></section><section data-desk-panel="engines" hidden><div id="engine-list"></div></section></div>`; document.body.append(desk);
+const deskToggle = m2("assistant-desk-toggle");
+const deskBody = m2("assistant-desk-body");
+const narrowDesk = window.matchMedia("(max-width: 760px)");
+
+function deskFocusables() {
+  return [...desk.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], details summary')]
+    .filter(element => !element.closest("[hidden]") && element.getClientRects().length);
+}
+
+function setWorkspaceInert(inert) {
+  document.querySelectorAll("body > header, body > main").forEach(element => { element.inert = inert; });
+}
+
+function setDeskOpen(open, { returnFocus = false } = {}) {
+  desk.classList.toggle("collapsed", !open);
+  document.body.classList.toggle("assistant-desk-open", open);
+  deskToggle.setAttribute("aria-expanded", String(open));
+  deskBody.setAttribute("aria-hidden", String(!open));
+  deskBody.inert = !open;
+  deskBackdrop.hidden = !(open && narrowDesk.matches);
+  const modal = open && narrowDesk.matches;
+  setWorkspaceInert(modal);
+  if (modal) {
+    desk.setAttribute("role", "dialog");
+    desk.setAttribute("aria-modal", "true");
+  } else {
+    desk.removeAttribute("role");
+    desk.removeAttribute("aria-modal");
+  }
+  if (returnFocus) deskToggle.focus();
+}
+
+setDeskOpen(false);
+deskToggle.onclick = async () => {
+  const open = desk.classList.contains("collapsed");
+  setDeskOpen(open);
+  if (open) {
+    await renderAssistantDesk();
+    await renderEvents();
+    if (narrowDesk.matches) m2("compile-runtime").focus();
+  }
+};
+deskBackdrop.onclick = () => setDeskOpen(false, { returnFocus: true });
+narrowDesk.onchange = () => setDeskOpen(!desk.classList.contains("collapsed"));
+document.addEventListener("keydown", event => {
+  if (desk.classList.contains("collapsed")) return;
+  if (event.key === "Escape") {
+    event.preventDefault();
+    setDeskOpen(false, { returnFocus: true });
+    return;
+  }
+  if (event.key !== "Tab" || !narrowDesk.matches) return;
+  const focusable = deskFocusables();
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+  else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+});
 desk.querySelectorAll("[data-desk-tab]").forEach(button => button.onclick = () => { desk.querySelectorAll("[data-desk-tab]").forEach(item => item.classList.toggle("active", item === button)); desk.querySelectorAll("[data-desk-panel]").forEach(panel => panel.hidden = panel.dataset.deskPanel !== button.dataset.deskTab); });
 m2("compile-runtime").onclick = async () => { await m2api("/api/runtime/compile", { method: "POST", body: "{}" }); m2("compile-runtime").textContent = "Context ready"; setTimeout(() => m2("compile-runtime").textContent = "Prepare context", 1600); };
 setInterval(async () => { if (!desk.classList.contains("collapsed")) { await renderAssistantDesk(); await renderEvents(); } }, 3000);

@@ -4,7 +4,7 @@ import express from "express";
 import chokidar, { type FSWatcher } from "chokidar";
 import { WebSocketServer } from "ws";
 import { indexProject } from "./project.js";
-import { createDocument, duplicateDocument, renameDocument, reorderDocuments, writeDocument } from "./documents.js";
+import { createDocument, createReferenceDocument, duplicateDocument, renameDocument, renameReferenceDocument, reorderDocuments, writeDocument } from "./documents.js";
 import { archiveItem, listArchive, listTrash, moveArchiveToTrash, permanentlyDeleteTrashItem, restoreArchivedItem } from "./archive.js";
 import { createProject, forgetProject, listRecentProjects, rememberProject } from "./lifecycle.js";
 import { inspectManifest, migrateManifest, repairManifest } from "./migrations.js";
@@ -39,6 +39,8 @@ app.get("/api/manifest/inspect", async (_req, res, next) => { try { res.json(awa
 app.post("/api/manifest/migrate", async (_req, res, next) => { try { await migrateManifest(projectRoot); broadcast("project-changed"); res.json(await snapshot()); } catch (error) { next(error); } });
 app.post("/api/manifest/repair", async (req, res, next) => { try { await repairManifest(projectRoot, req.body ?? {}); await rememberProject(projectRoot, String(req.body?.name ?? path.basename(projectRoot))); await watchProject(); res.json(await snapshot()); } catch (error) { next(error); } });
 app.post("/api/documents", async (req, res, next) => { try { await createDocument(projectRoot, String(req.body.path), req.body.frontmatter ?? {}, String(req.body.body ?? "")); res.status(201).json(await snapshot()); } catch (error) { next(error); } });
+app.post("/api/references", async (req, res, next) => { try { const created = await createReferenceDocument(projectRoot, { category: String(req.body.category ?? ""), type: req.body.type, title: String(req.body.title ?? "") }); res.status(201).json({ created, snapshot: await snapshot() }); } catch (error) { next(error); } });
+app.post("/api/references/rename", async (req, res, next) => { try { const plan = await renameReferenceDocument(projectRoot, String(req.body.path ?? ""), String(req.body.name ?? ""), Boolean(req.body.dryRun)); res.json(req.body.dryRun ? { plan } : { plan, snapshot: await snapshot() }); } catch (error) { next(error); } });
 app.put("/api/documents/*path", async (req, res, next) => { try { const relative = Array.isArray(req.params.path) ? req.params.path.join("/") : String(req.params.path); await writeDocument(projectRoot, relative, req.body.frontmatter ?? {}, String(req.body.body ?? "")); res.json({ ok: true }); } catch (error) { next(error); } });
 app.post("/api/documents/reorder", async (req, res, next) => { try { await reorderDocuments(projectRoot, req.body.paths); res.json(await snapshot()); } catch (error) { next(error); } });
 app.post("/api/documents/rename", async (req, res, next) => { try { await renameDocument(projectRoot, String(req.body.from), String(req.body.to)); res.json(await snapshot()); } catch (error) { next(error); } });

@@ -11,7 +11,9 @@ test("indexes ordered manuscripts, references, characters, and graph links", asy
   const { manifest, graph } = await indexProject(fixture);
   assert.equal(manifest.name, "The Lantern Archive");
   assert.deepEqual(graph.manuscripts.map(document => document.title), ["The Door Under the Rain", "What the Archive Forgot"]);
-  assert.equal(graph.characters.length, 2);
+  assert.ok(graph.characters.some(character => character.name === "Mara Vale"));
+  assert.ok(graph.characters.some(character => character.name === "Oren Pike"));
   assert.ok(graph.references.world?.some(document => document.title === "The Lantern Archive"));
-  assert.ok(graph.links.some(link => link.type === "features" && link.from.endsWith("chapter-001.md")));
+  const opening = graph.manuscripts.find(document => document.path === "manuscript/chapter-001.md");
+  assert.ok(opening && graph.links.some(link => link.type === "features" && link.from === opening.id));
 });

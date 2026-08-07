@@ -31,7 +31,7 @@ test("generic adapter persists sessions and normalizes external activity", async
 
 test("proposal bundles do not touch canonical files before acceptance", async () => {
   const root = await project(); const original = await readDocument(root, "manuscript/chapter-001.md", "manuscript", "manuscript"); const proposal = await createProposal(root, { title: "A revision", summary: "Improve opening", files: [{ path: original.path, baseModifiedAt: original.modifiedAt, frontmatter: original.frontmatter, body: "Proposed prose" }] });
-  assert.match((await readDocument(root, original.path, "manuscript", "manuscript")).body, /opening chapter/i); assert.equal((await listProposals(root))[0]?.status, "pending"); await editProposal(root, proposal.id, [{ ...proposal.files[0]!, body: "Edited proposal prose" }]); await acceptProposal(root, proposal.id, { bookmark: "Accepted proposed revision" }); assert.match((await readDocument(root, original.path, "manuscript", "manuscript")).body, /Edited proposal prose/);
+  assert.equal((await readDocument(root, original.path, "manuscript", "manuscript")).body, original.body); assert.equal((await listProposals(root))[0]?.status, "pending"); await editProposal(root, proposal.id, [{ ...proposal.files[0]!, body: "Edited proposal prose" }]); await acceptProposal(root, proposal.id, { bookmark: "Accepted proposed revision" }); assert.match((await readDocument(root, original.path, "manuscript", "manuscript")).body, /Edited proposal prose/);
 });
 
 test("stale proposals require explicit conflict handling and rejection is persistent", async () => {

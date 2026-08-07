@@ -7,6 +7,26 @@ import { DocumentTypeSchema, type DocumentKind, type LoomDocument } from "./mode
 const titleFromPath = (filePath: string) => path.basename(filePath, path.extname(filePath)).replace(/[-_]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 const words = (text: string) => (text.trim().match(/\b[\p{L}\p{N}’'-]+\b/gu) ?? []).length;
 
+const slugify = (value: string) => value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+async function markdownFiles(root: string, relative = ""): Promise<string[]> {
+  const entries = await fs.readdir(path.join(root, relative), { withFileTypes: true }).catch(() => []);
+  const files: string[] = [];
+  for (const entry of entries) {
+    if (entry.name.startsWith(".") || entry.name === "node_modules") continue;
+    const child = path.join(relative, entry.name);
+    if (entry.isDirectory()) files.push(...await markdownFiles(root, child));
+    else if (entry.isFile() && /\.md$/i.test(entry.name)) files.push(child.replaceAll("\\", "/"));
+  }
+  return files;
+}
+
+async function atomicRawWrite(absolute: string, raw: string): Promise<void> {
+  const temporary = `${absolute}.${crypto.randomUUID()}.loom-studio-tmp`;
+  await fs.writeFile(temporary, raw, "utf8");
+  await fs.rename(temporary, absolute);
+}
+
 function safePath(root: string, relativePath: string): string {
   const resolvedRoot = path.resolve(root);
   const absolute = path.resolve(root, relativePath);
@@ -81,6 +101,113 @@ export async function createDocument(root: string, relativePath: string, frontma
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
   await writeDocument(root, relativePath, { id: crypto.randomUUID(), status: "draft", tags: [], ...frontmatter }, body);
+}
+
+export interface CreateReferenceInput {
+  category: string;
+  type: LoomDocument["type"];
+  title: string;
+}
+
+export async function createReferenceDocument(root: string, input: CreateReferenceInput): Promise<{ id: string; path: string }> {
+  const title = input.title.trim();
+  if (!title) throw new Error("A name is required");
+  if (!DocumentTypeSchema.safeParse(input.type).success || ["chapter", "scene", "unknown"].includes(input.type)) throw new Error("Unsupported reference document type");
+  const manifest = JSON.parse(await fs.readFile(safePath(root, "loom.json"), "utf8")) as { references?: Record<string, unknown> };
+  const configured = manifest.references?.[input.category];
+  if (!Array.isArray(configured)) throw new Error(`Reference category ${input.category} is not configured`);
+  const referenceRoot = configured.find(value => typeof value === "string" && value.length > 0 && !value.includes("*"));
+  if (typeof referenceRoot !== "string") throw new Error(`Reference category ${input.category} has no writable folder`);
+  const slug = slugify(title);
+  if (!slug) throw new Error("The name must contain at least one letter or number");
+  const relativePath = path.posix.join(referenceRoot.replaceAll("\\", "/"), `${slug}.md`);
+  const id = crypto.randomUUID();
+  const frontmatter: Record<string, unknown> = { id, type: input.type, title, name: title, status: "draft", tags: [] };
+  await createDocument(root, relativePath, frontmatter, `# ${title}\n\n`);
+  return { id, path: relativePath };
+}
+
+export interface RenameReferencePlan {
+  id: string;
+  from: string;
+  to: string;
+  previousName: string;
+  name: string;
+  affectedPaths: string[];
+}
+
+function replaceReference(value: unknown, matches: Set<string>, replacement: string): unknown {
+  if (typeof value === "string") return matches.has(value.trim().toLowerCase()) ? replacement : value;
+  if (Array.isArray(value)) return value.map(item => replaceReference(item, matches, replacement));
+  return value;
+}
+
+export async function renameReferenceDocument(root: string, relativePath: string, requestedName: string, dryRun = false): Promise<RenameReferencePlan> {
+  const name = requestedName.trim();
+  if (!name) throw new Error("A name is required");
+  const files = await markdownFiles(root);
+  const normalizedPath = relativePath.replaceAll("\\", "/");
+  if (!files.includes(normalizedPath)) throw new Error(`Reference document not found: ${normalizedPath}`);
+  const sourceAbsolute = safePath(root, normalizedPath);
+  const sourceRaw = await fs.readFile(sourceAbsolute, "utf8");
+  const source = matter(sourceRaw);
+  const id = typeof source.data.id === "string" && source.data.id.trim() ? source.data.id : normalizedPath;
+  const previousName = String(source.data.name ?? source.data.title ?? titleFromPath(normalizedPath));
+  const folder = path.posix.dirname(normalizedPath);
+  const slug = slugify(name);
+  if (!slug) throw new Error("The name must contain at least one letter or number");
+  const destination = path.posix.join(folder, `${slug}.md`);
+  if (destination !== normalizedPath) {
+    await fs.access(safePath(root, destination)).then(() => { throw new Error(`A document already exists at ${destination}`); }).catch(error => {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    });
+  }
+
+  const matches = new Set([previousName, String(source.data.title ?? ""), normalizedPath, `./${path.posix.basename(normalizedPath)}`].filter(Boolean).map(value => value.trim().toLowerCase()));
+  const referenceFields = new Set(["characters_present", "pov", "location", "from", "to", "references"]);
+  const originals = new Map<string, string>();
+  const updates = new Map<string, string>();
+  for (const file of files) {
+    const absolute = safePath(root, file);
+    const raw = file === normalizedPath ? sourceRaw : await fs.readFile(absolute, "utf8");
+    const parsed = matter(raw);
+    let changed = false;
+    const data = { ...parsed.data } as Record<string, unknown>;
+    if (file === normalizedPath) {
+      data.title = name;
+      if ("name" in data || ["character", "location", "world"].includes(String(data.type))) data.name = name;
+      changed = String(parsed.data.title ?? "") !== name || ("name" in data && String(parsed.data.name ?? "") !== name);
+    }
+    for (const field of referenceFields) {
+      if (!(field in data)) continue;
+      const next = replaceReference(data[field], matches, id);
+      if (JSON.stringify(next) !== JSON.stringify(data[field])) { data[field] = next; changed = true; }
+    }
+    if (changed) {
+      originals.set(file, raw);
+      updates.set(file, matter.stringify(parsed.content, data));
+    }
+  }
+  const plan: RenameReferencePlan = { id, from: normalizedPath, to: destination, previousName, name, affectedPaths: [...updates.keys()] };
+  if (dryRun) return plan;
+
+  const written: string[] = [];
+  let renamed = false;
+  try {
+    for (const [file, raw] of updates) {
+      await atomicRawWrite(safePath(root, file), raw);
+      written.push(file);
+    }
+    if (destination !== normalizedPath) { await fs.rename(sourceAbsolute, safePath(root, destination)); renamed = true; }
+    return plan;
+  } catch (error) {
+    if (renamed) await fs.rename(safePath(root, destination), sourceAbsolute).catch(() => undefined);
+    for (const file of written.reverse()) {
+      const original = originals.get(file);
+      if (original !== undefined) await atomicRawWrite(safePath(root, file), original).catch(() => undefined);
+    }
+    throw error;
+  }
 }
 
 export async function renameDocument(root: string, from: string, to: string): Promise<void> {

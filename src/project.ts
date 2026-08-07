@@ -53,7 +53,9 @@ export async function indexProject(root: string): Promise<{ manifest: LoomManife
   const references: Record<string, LoomDocument[]> = {};
   for (const document of documents.filter(d => d.kind === "reference")) (references[document.category] ??= []).push(document);
   const characters = documents.filter(d => d.type === "character").map(doc => ({ id: doc.id, name: String(doc.frontmatter.name ?? doc.title), path: doc.path }));
-  const locations = documents.filter(d => d.type === "location").map(doc => ({ id: doc.id, name: String(doc.frontmatter.name ?? doc.title), path: doc.path }));
+  const locations = documents
+    .filter(d => d.type === "location" || normalized(d.frontmatter.category) === "location")
+    .map(doc => ({ id: doc.id, name: String(doc.frontmatter.name ?? doc.title), path: doc.path }));
   const links: ProjectGraph["links"] = [];
   const diagnostics: ProjectDiagnostic[] = [];
   const ids = new Map<string, LoomDocument[]>();

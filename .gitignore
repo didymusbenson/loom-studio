@@ -22,3 +22,7 @@ workspaces/*
 # Provider-local configuration
 .claude/settings.local.json
 .codex/
+
+# Generated coordination state for the committed synthetic fixture
+fixtures/sample-project/.loom/
+fixtures/sample-project/CLAUDE.md

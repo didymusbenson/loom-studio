@@ -7,7 +7,7 @@ Last updated: 2026-08-06
 - Active branch: `milestone-2`
 - Branch policy: long-running feature branch; do not merge into `main` until the validation manifest is green and the user explicitly requests it.
 - Current milestone: Milestone 2 — The Collaboration Layer.
-- Current focus: turn the implemented collaboration foundation into a complete writer-first product experience.
+- Current focus: validate the collaboration foundation criterion by criterion, then close the live-activity and writer-facing review gaps surfaced by that audit.
 - Authoritative acceptance contract: `docs/validation/milestone-2.json`.
 
 ## Current status
@@ -24,6 +24,12 @@ Implemented and covered by initial tests:
 
 The validation manifest still reports `in-progress` and its acceptance entries remain pending. Existing tests demonstrate much of the foundation, but the manifest must not be marked green until each criterion has been deliberately verified.
 
+Validation orchestration began on 2026-08-06. `npm run check` now passes all 31 tests after fixing the runtime capsule type guard, correcting stale assertions, and adding document-transaction and Collaborator Desk coverage. A passing automated suite is not yet Milestone 2 signoff: live delivery, adapter normalization, restart persistence, engine-file safety, and manual responsive review still need explicit evidence or implementation.
+
+Milestone 1 follow-up validation is also substantially complete. Direct browser runs passed its project-library, restart-state, reference-tab, and irreversible-deletion workflows. The run exposed and fixed missing Timeline options and Rename controls that had stopped the client during startup. Only the explicitly human `M1-UX-001` visual-design signoff remains pending; Codex captured preparatory desktop and narrow-width evidence.
+
+The first human-feedback batch is implemented: semantic Markdown reference reading, whole-sheet Read/Edit/Save/Discard behavior, contextual reference creation, project-backed character/location/relationship selectors, transactional author-facing reference rename with stable hidden identity, clearer Save version language, less crowded recent-project actions, and a responsive/inert Collaborator Desk shell. Browser verification passed at desktop and 375px widths without content overlap or console errors.
+
 ## Remaining work
 
 1. Finish the Collaborator Desk: running assistants, status, current task, waiting state, activity, and meaningful progress in a secondary writer-first panel.
@@ -37,11 +43,14 @@ The validation manifest still reports `in-progress` and its acceptance entries r
 
 ## Next task
 
-Inspect the current Collaborator Desk event-refresh path and implement live activity delivery from the generic filesystem adapter through the existing local transport. Preserve the secondary-panel interaction and add integration coverage for status, task, read, write, proposal, waiting, completion, and error events.
+Implement live activity delivery from the generic filesystem adapter through the existing local transport. Preserve in-progress proposal edits, fold task/waiting/completion/error events into visible session state, and add integration coverage for the complete normalized event set.
 
 ## Known risks and constraints
 
-- As of 2026-08-06, `npm run check` stops during TypeScript compilation at `src/runtime.ts:56-57`: indexed path segments are inferred as possibly `undefined`. This predates the documentation handoff and must be fixed before the validation suite can be considered green.
+- The Claude Code engine pack currently writes and removes root `CLAUDE.md` and `.claude/settings.local.json` without preserving pre-existing user files; engine lifecycle validation must cover and resolve that ownership hazard.
+- External session and event JSON is cast without structural validation, and missing event IDs are regenerated on each read; adapter normalization needs a durable schema and stable identity behavior.
+- The Collaborator Desk currently polls every three seconds, can replace unsaved proposal textarea content, and does not receive external `.loom/sessions` writes through the existing project watcher.
+- Runtime inspection, adapter health/capability management, side-by-side proposal comparison, and simultaneous-assistant presentation remain incomplete.
 - Filesystem observation is the universal baseline; do not imply pause, resume, usage, or approval-continuation support when an adapter cannot provide it.
 - Proposal acceptance must never silently overwrite a stale source.
 - Generated `.loom/` coordination state must not become canonical project truth or leak into author documents.

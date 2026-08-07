@@ -8,8 +8,8 @@ Architectural Decision Records preserve the reason behind durable choices. Accep
 | [0002 — Disposable runtime capsules](../adr/0002-runtime-capsules.md) | Accepted | Assistant-facing runtime files are deterministic, replaceable artifacts. |
 | [0003 — Versioned engine packs](../adr/0003-engine-packs.md) | Accepted | Provider-oriented scaffolding is isolated in replaceable packs. |
 | [0004 — Observational assistant adapters](../adr/0004-observational-adapters.md) | Accepted | Studio observes capability-based external sessions and does not own prompting or credentials. |
+| [0005 — Stable document identity and mutable author-facing slugs](../adr/0005-document-identity-and-slugs.md) | Accepted | Technical IDs remain stable while visible names, slugs, filenames, and legacy references rename together. |
 
 ## Adding a decision
 
 Use the next four-digit number. Include status, context, decision, and consequences. Keep implementation details in code documentation unless they express a boundary future work must preserve.
-

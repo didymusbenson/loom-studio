@@ -53,7 +53,9 @@ export async function compileRuntime(projectRoot: string, engineId = "generic-fi
 
   const generated: string[] = [];
   for (const name of Object.keys(capsules).sort()) {
-    const content = capsules[name].endsWith("\n") ? capsules[name] : `${capsules[name]}\n`;
+    const capsule = capsules[name];
+    if (capsule === undefined) continue;
+    const content = capsule.endsWith("\n") ? capsule : `${capsule}\n`;
     await writeIfChanged(path.join(runtimeRoot, name), content);
     generated.push(path.posix.join(".loom/runtime", name));
   }
