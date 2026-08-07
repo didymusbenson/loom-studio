@@ -61,3 +61,39 @@ test("writer-facing versions and recent projects use clear action language", asy
   assert.match(script, /Remove from recents/);
   assert.match(script, /files will stay on disk/);
 });
+
+test("creating a project offers a native folder selector and fills the parent path", async () => {
+  const html = await read("public/index.html");
+  const script = await read("public/app.js");
+  const server = await read("src/server.ts");
+  assert.match(html, /id="choose-project-folder"/);
+  assert.match(html, /Choose folder/);
+  assert.match(script, /\/api\/system\/select-folder/);
+  assert.match(script, /parentInput\.value = selected\.path/);
+  assert.match(server, /selectFolder/);
+});
+
+test("dialog cancel controls bypass required-field validation", async () => {
+  const html = await read("public/index.html");
+  const cancelButtons = [...html.matchAll(/<button\b[^>]*value="cancel"[^>]*>/g)].map(match => match[0]);
+  assert.ok(cancelButtons.length > 0, "expected dialog cancel controls");
+  for (const button of cancelButtons) assert.match(button, /\bformnovalidate\b/, `cancel control still validates: ${button}`);
+  assert.doesNotMatch(html, /<button\b[^>]*value="default"[^>]*formnovalidate/);
+});
+
+test("native folder selection remains a loopback-only protected action", async () => {
+  const script = await read("public/app.js");
+  const server = await read("src/server.ts");
+  assert.match(server, /server\.listen\(port, "127\.0\.0\.1"/);
+  assert.match(server, /x-loom-studio-request/);
+  assert.match(server, /folderSelectionPending/);
+  assert.match(server, /isTrustedLocalRequest/);
+  assert.match(script, /"x-loom-studio-request":"folder-picker"/);
+});
+
+test("dialogs clear stale confirmation state before reopening", async () => {
+  const script = await read("public/app.js");
+  assert.match(script, /function showDialog\(dialog\)/);
+  assert.match(script, /dialog\.returnValue = ""/);
+  assert.equal((script.match(/\.showModal\(\)/g) ?? []).length, 1, "all modal opens should use showDialog");
+});

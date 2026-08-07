@@ -8,6 +8,8 @@ import { createDocument, createReferenceDocument, duplicateDocument, renameDocum
 import { archiveItem, listArchive, listTrash, moveArchiveToTrash, permanentlyDeleteTrashItem, restoreArchivedItem } from "./archive.js";
 import { createProject, forgetProject, listRecentProjects, rememberProject } from "./lifecycle.js";
 import { inspectManifest, migrateManifest, repairManifest } from "./migrations.js";
+import { selectFolder } from "./folder-picker.js";
+import { isTrustedLocalRequest } from "./local-request.js";
 import { bookmarkAndSwitch, createBookmark, createTimeline, deleteTimeline, ensureRepository, renameTimeline, restoreBookmark, revisionStatus, switchTimeline } from "./revisions.js";
 import { registerMilestone2Routes } from "./milestone2-routes.js";
 
@@ -18,6 +20,7 @@ const port = Number(process.env.PORT ?? 4173);
 let projectRoot = process.env.LOOM_PROJECT ? path.resolve(process.env.LOOM_PROJECT) : path.resolve("fixtures/sample-project");
 let watcher: FSWatcher | null = null;
 let refreshTimer: NodeJS.Timeout | null = null;
+let folderSelectionPending = false;
 
 app.use(express.json({ limit: "4mb" }));
 app.use(express.static(path.resolve("public")));
@@ -31,6 +34,15 @@ function broadcast(type: string) { const payload = JSON.stringify({ type, at: ne
 async function watchProject() { await watcher?.close(); watcher = chokidar.watch(projectRoot, { ignored: [/(^|[/\\])\../, /node_modules/, /\.git/], ignoreInitial: true, awaitWriteFinish: { stabilityThreshold: 180, pollInterval: 50 } }); watcher.on("all", () => { if (refreshTimer) clearTimeout(refreshTimer); refreshTimer = setTimeout(() => broadcast("project-changed"), 220); }); }
 
 app.get("/api/library", async (_req, res, next) => { try { res.json({ recent: await listRecentProjects() }); } catch (error) { next(error); } });
+app.post("/api/system/select-folder", async (req, res, next) => {
+  if (!isTrustedLocalRequest({ host: req.get("host"), origin: req.get("origin") }, port)) return res.status(403).json({ error: "Folder selection requires a trusted local request" });
+  if (req.get("x-loom-studio-request") !== "folder-picker") return res.status(403).json({ error: "Folder selection requires the Loom Studio interface" });
+  if (folderSelectionPending) return res.status(409).json({ error: "A folder selector is already open" });
+  folderSelectionPending = true;
+  try { res.json({ path: await selectFolder() }); }
+  catch (error) { next(error); }
+  finally { folderSelectionPending = false; }
+});
 app.delete("/api/library/recent", async (req, res, next) => { try { await forgetProject(String(req.body.path ?? "")); res.json({ recent: await listRecentProjects() }); } catch (error) { next(error); } });
 app.post("/api/projects", async (req, res, next) => { try { projectRoot = await createProject(req.body); await watchProject(); res.status(201).json(await snapshot()); } catch (error) { next(error); } });
 app.get("/api/project", async (_req, res, next) => { try { res.json(await snapshot()); } catch (error) { next(error); } });
@@ -61,4 +73,4 @@ app.delete("/api/revisions/timelines", async (req, res, next) => { try { await d
 registerMilestone2Routes(app, () => projectRoot, broadcast);
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => { const message = error instanceof Error ? error.message : "Unknown error"; res.status(400).json({ error: message }); });
 await watchProject();
-server.listen(port, () => console.log(`Loom Studio: http://localhost:${port}\nProject: ${projectRoot}`));
+server.listen(port, "127.0.0.1", () => console.log(`Loom Studio: http://localhost:${port}\nProject: ${projectRoot}`));

@@ -23,6 +23,10 @@
 .reference-empty { display: grid; align-content: start; justify-items: start; gap: 8px; }
 .empty-copy { color: var(--muted); font-style: italic; }
 .dialog-help { margin: 0; color: var(--muted); line-height: 1.5; }
+.folder-picker-row { display: flex; align-items: stretch; gap: 8px; }
+.folder-picker-row input { min-width: 0; flex: 1; }
+.folder-picker-row button { flex: 0 0 auto; }
+#folder-picker-help { margin-top: -6px; }
 .change-preview { display: grid; gap: 5px; padding: 10px; border: 1px solid #cdbda8; border-radius: 4px; background: #fffaf0; }
 .recent-card { gap: 18px; }
 .recent-details { min-width: 0; flex: 1; }

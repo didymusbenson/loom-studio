@@ -11,6 +11,7 @@ const $ = id => document.getElementById(id);
 const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
 const uiKey = root => `loom-studio:ui:${root}`;
 const singularCategory = category => ({ characters:"character", locations:"location", relationships:"relationship", observations:"observation", notes:"note", world:"world note", project:"project note" }[category] || String(category || "reference").replace(/s$/, ""));
+function showDialog(dialog) { dialog.returnValue = ""; dialog.showModal(); }
 
 async function api(url, options = {}) {
   const response = await fetch(url, { headers: { "content-type": "application/json" }, ...options });
@@ -29,7 +30,7 @@ function promptFor(label, initial = "") {
     $("prompt-label").textContent = label;
     $("prompt-input").value = initial;
     dialog.onclose = () => resolve(dialog.returnValue === "default" ? $("prompt-input").value.trim() : null);
-    dialog.showModal();
+    showDialog(dialog);
     $("prompt-input").focus();
   });
 }
@@ -154,7 +155,7 @@ async function openEntityChooser(field, container, editor) {
   $("entity-dialog-help").textContent = `Choose an existing ${kind}, or create a new one.`;
   $("entity-select-label").firstChild.textContent = `Choose ${kind}`;
   select.replaceChildren(...available.map(item => new Option(item.name, item.id)), new Option(`＋ Create new ${kind}…`, "__create__"));
-  const submitted = await new Promise(resolve => { dialog.onclose = () => resolve(dialog.returnValue === "default"); dialog.showModal(); select.focus(); });
+  const submitted = await new Promise(resolve => { dialog.onclose = () => resolve(dialog.returnValue === "default"); showDialog(dialog); select.focus(); });
   if (!submitted) return;
   let value = select.value;
   if (value === "__create__") {
@@ -317,7 +318,7 @@ async function createReference(category = referenceCategory, { type = singularCa
   $("reference-dialog-title").textContent = `New ${type}`;
   $("reference-dialog-help").textContent = `Create a blank ${type} sheet and open it for editing.`;
   form.elements.name.value = "";
-  const submitted = await new Promise(resolve => { dialog.onclose = () => resolve(dialog.returnValue === "default"); dialog.showModal(); form.elements.name.focus(); });
+  const submitted = await new Promise(resolve => { dialog.onclose = () => resolve(dialog.returnValue === "default"); showDialog(dialog); form.elements.name.focus(); });
   if (!submitted) return null;
   const name = form.elements.name.value.trim();
   if (!name) return null;
@@ -411,7 +412,7 @@ async function saveEditor(editor) {
 }
 
 function showError(error) { alert(error?.message || String(error)); }
-function openDrawer(title, html) { $("drawer-title").textContent = title; $("drawer-content").innerHTML = html; $("drawer-dialog").showModal(); }
+function openDrawer(title, html) { $("drawer-title").textContent = title; $("drawer-content").innerHTML = html; showDialog($("drawer-dialog")); }
 
 $("manuscript-editor").addEventListener("input", event => {
   const words = event.target.value.trim().match(/\b[\w’'-]+\b/g) || [];
@@ -470,7 +471,7 @@ $("rename-reference").onclick = async () => {
   };
   input.oninput = () => { clearTimeout(input._previewTimer); input._previewTimer = setTimeout(updatePreview, 180); };
   await updatePreview();
-  const submitted = await new Promise(resolve => { dialog.onclose = () => resolve(dialog.returnValue === "default"); dialog.showModal(); input.focus(); input.select(); });
+  const submitted = await new Promise(resolve => { dialog.onclose = () => resolve(dialog.returnValue === "default"); showDialog(dialog); input.focus(); input.select(); });
   if (!submitted || !input.value.trim() || input.value.trim() === currentName) return;
   try {
     const result = await api("/api/references/rename", { method:"POST", body:JSON.stringify({ path:referenceDoc.path, name:input.value.trim() }) });
@@ -559,7 +560,7 @@ $("show-archive").onclick = () => {
 $("bookmark").onclick = async () => {
   const dialog = $("version-dialog"), form = $("version-form");
   form.elements.message.value = "";
-  const submitted = await new Promise(resolve => { dialog.onclose = () => resolve(dialog.returnValue === "default"); dialog.showModal(); form.elements.message.focus(); });
+  const submitted = await new Promise(resolve => { dialog.onclose = () => resolve(dialog.returnValue === "default"); showDialog(dialog); form.elements.message.focus(); });
   const message = submitted ? form.elements.message.value.trim() : "";
   if (message) { state.revision = await api("/api/revisions/bookmarks", { method:"POST", body:JSON.stringify({ message }) }); render(); $("save-state").textContent = "Version saved"; }
 };
@@ -606,9 +607,27 @@ async function openProject(projectPath) {
     } else throw error;
   }
 }
-$("project-library").onclick = async () => { await renderLibrary(); $("library-dialog").showModal(); };
+$("project-library").onclick = async () => { await renderLibrary(); showDialog($("library-dialog")); };
 $("open-project").onclick = async () => { const value = await promptFor("Absolute path to a Loom project"); if (value) await openProject(value); };
-$("create-project").onclick = () => $("create-dialog").showModal();
+async function chooseProjectFolder() {
+  const button = $("choose-project-folder");
+  const parentInput = $("project-parent");
+  const help = $("folder-picker-help");
+  button.disabled = true;
+  help.textContent = "Opening your folder selector…";
+  try {
+    const selected = await api("/api/system/select-folder", { method:"POST", headers:{ "content-type":"application/json", "x-loom-studio-request":"folder-picker" }, body:"{}" });
+    if (selected.path) {
+      parentInput.value = selected.path;
+      help.textContent = "The new project will be created inside this folder.";
+    } else help.textContent = "No folder selected. Choose one or enter its path.";
+  } catch (error) {
+    help.textContent = "The folder selector is unavailable. You can still enter the folder path.";
+    showError(error);
+  } finally { button.disabled = false; }
+}
+$("create-project").onclick = () => { showDialog($("create-dialog")); chooseProjectFolder(); };
+$("choose-project-folder").onclick = chooseProjectFolder;
 $("create-dialog").addEventListener("close", async () => {
   if ($("create-dialog").returnValue !== "default") return;
   const data = Object.fromEntries(new FormData($("create-form")));
@@ -626,4 +645,4 @@ window.addEventListener("beforeunload", event => { if ($("save-state").textConte
 const protocol = location.protocol === "https:" ? "wss" : "ws";
 const socket = new WebSocket(`${protocol}://${location.host}/events`);
 socket.onmessage = () => load().catch(console.error);
-load().catch(async error => { showError(error); await renderLibrary(); $("library-dialog").showModal(); });
+load().catch(async error => { showError(error); await renderLibrary(); showDialog($("library-dialog")); });
