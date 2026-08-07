@@ -9,6 +9,7 @@ Architectural Decision Records preserve the reason behind durable choices. Accep
 | [0003 — Versioned engine packs](../adr/0003-engine-packs.md) | Accepted | Provider-oriented scaffolding is isolated in replaceable packs. |
 | [0004 — Observational assistant adapters](../adr/0004-observational-adapters.md) | Accepted | Studio observes capability-based external sessions and does not own prompting or credentials. |
 | [0005 — Stable document identity and mutable author-facing slugs](../adr/0005-document-identity-and-slugs.md) | Accepted | Technical IDs remain stable while visible names, slugs, filenames, and legacy references rename together. |
+| [0006 — Native folder selection belongs to the local application](../adr/0006-native-folder-selection.md) | Proposed | The local server opens the operating system folder chooser and returns the selected path to the writer-facing project form. |
 
 ## Adding a decision
 

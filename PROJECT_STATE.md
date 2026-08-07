@@ -1,13 +1,13 @@
 # Loom Studio Project State
 
-Last updated: 2026-08-06
+Last updated: 2026-08-07
 
 ## Resume here
 
-- Active branch: `milestone-2`
-- Branch policy: long-running feature branch; do not merge into `main` until the validation manifest is green and the user explicitly requests it.
+- Active branch: `feat/native-project-folder-picker`
+- Branch policy: short-lived proposal branch targeting `main`; do not merge automatically.
 - Current milestone: Milestone 2 — The Collaboration Layer.
-- Current focus: validate the collaboration foundation criterion by criterion, then close the live-activity and writer-facing review gaps surfaced by that audit.
+- Current focus: propose a writer-friendly native folder selector for the Project Binder Shelf's Create New flow without changing project portability or filesystem ownership.
 - Authoritative acceptance contract: `docs/validation/milestone-2.json`.
 
 ## Current status
@@ -29,6 +29,8 @@ Validation orchestration began on 2026-08-06. `npm run check` now passes all 31 
 Milestone 1 follow-up validation is also substantially complete. Direct browser runs passed its project-library, restart-state, reference-tab, and irreversible-deletion workflows. The run exposed and fixed missing Timeline options and Rename controls that had stopped the client during startup. Only the explicitly human `M1-UX-001` visual-design signoff remains pending; Codex captured preparatory desktop and narrow-width evidence.
 
 The first human-feedback batch is implemented: semantic Markdown reference reading, whole-sheet Read/Edit/Save/Discard behavior, contextual reference creation, project-backed character/location/relationship selectors, transactional author-facing reference rename with stable hidden identity, clearer Save version language, less crowded recent-project actions, and a responsive/inert Collaborator Desk shell. Browser verification passed at desktop and 375px widths without content overlap or console errors.
+
+A new proposal adds native parent-folder selection to **Create New** in the Project Binder Shelf. The local server opens the operating system chooser on Windows, macOS, or supported Linux desktops, returns the selected path to the form, and preserves manual path entry as a fallback. ADR 0006 records the browser/server boundary. The same proposal fixes dialog cancellation across the interface so Cancel and close controls bypass required-field validation while confirmation actions remain validated.
 
 ## Remaining work
 
